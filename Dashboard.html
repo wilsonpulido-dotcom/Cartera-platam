@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Cartera Online — Platam</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#070b14; --bg2:#0d1525; --bg3:#111d35;
+  --border:rgba(99,143,255,0.12);
+  --accent:#4f8cff; --accent2:#a259ff; --accent3:#00e5c0;
+  --warn:#f59e0b; --danger:#f43f5e; --success:#10b981;
+  --text:#e2e8f0; --muted:#64748b; --card:rgba(13,21,37,0.85);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,140,255,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(79,140,255,0.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.wrapper{position:relative;z-index:1;max-width:1480px;margin:0 auto;padding:28px 20px}
+header{display:flex;align-items:center;justify-content:space-between;padding-bottom:24px;border-bottom:1px solid var(--border);margin-bottom:28px;flex-wrap:wrap;gap:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.brand-text h1{font-size:1.35rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.brand-text p{font-size:.68rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.live-badge{display:flex;align-items:center;gap:7px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:20px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:.65rem;color:var(--success);letter-spacing:.1em}
+.live-dot{width:6px;height:6px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.summary-box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px 30px;position:relative;overflow:hidden}
+.summary-box.left::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent2),var(--accent),transparent)}
+.summary-box.right::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent3),transparent)}
+.summary-main-val{font-size:2.4rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--text)}
+.summary-row{display:flex;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.summary-row-val{font-size:1.1rem;font-weight:800;font-family:'DM Mono',monospace}
+.charts-grid{display:grid;gap:16px;margin-bottom:16px}
+.g2{grid-template-columns:1fr 1fr}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 22px}
+.chart-title{font-size:.82rem;font-weight:700;margin-bottom:16px}
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:24px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:0.75rem}
+th{background:var(--bg2);padding:12px;text-align:left;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+td{padding:12px;border-bottom:1px solid var(--border);white-space:nowrap}
+.badge{padding:4px 8px;border-radius:6px;font-weight:700;font-size:0.6rem;text-transform:uppercase}
+.bg-success{background:rgba(16,185,129,0.15);color:var(--success)}
+.bg-danger{background:rgba(244,63,94,0.15);color:var(--danger)}
+.ranking-item{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.rank-bar-track{flex:1;height:6px;background:rgba(255,255,255,0.05);border-radius:3px}
+.rank-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width 1s}
+#loader{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <p style="margin-top:15px; font-family:'DM Mono'; font-size:0.8rem; color:var(--accent)">Accediendo a Cartera Platam...</p>
+</div>
+
+<div class="wrapper">
+    <header>
+        <div class="brand">
+            <div class="brand-icon">◈</div>
+            <div class="brand-text">
+                <h1>Control de Cartera</h1>
+                <p>Platam Colombia SAS &middot; Datos en vivo desde Sheets</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-badge"><div class="live-dot"></div><span id="livetime">LIVE</span></div>
+        </div>
+    </header>
+
+    <div class="summary-grid">
+        <div class="summary-box left">
+            <p style="font-size:0.65rem; color:var(--muted); letter-spacing:1px">CARTERA VIGENTE TOTAL</p>
+            <div class="summary-main-val" id="total-cartera">$ 0</div>
+            <div class="summary-row">
+                <span>BNPL</span>
+                <span class="summary-row-val" id="total-bnpl" style="color:var(--accent2)">$ 0</span>
+            </div>
+            <div class="summary-row">
+                <span>Invoice Financing</span>
+                <span class="summary-row-val" id="total-if" style="color:var(--accent)">$ 0</span>
+            </div>
+        </div>
+        <div class="summary-box right">
+            <p style="font-size:0.65rem; color:var(--muted); letter-spacing:1px">ESTADO DE MORA</p>
+            <div class="summary-main-val" id="total-mora" style="color:var(--danger)">$ 0</div>
+            <div class="summary-row">
+                <span>Tasa de Mora (>30d)</span>
+                <span class="summary-row-val" id="tasa-mora" style="color:var(--warn)">0.00%</span>
+            </div>
+            <div class="summary-row">
+                <span>Clientes en Default</span>
+                <span class="summary-row-val" id="count-default" style="color:var(--danger)">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-grid g2">
+        <div class="chart-card">
+            <div class="chart-title">Top 10 Clientes por Saldo</div>
+            <canvas id="topBar" height="300"></canvas>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Ranking Comerciales</div>
+            <div id="comercialRanking"></div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div style="padding:20px; font-weight:800">DETALLE DE OPERACIONES ACTIVAS (TOP 50)</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Línea</th>
+                        <th>Vencimiento</th>
+                        <th>Días Mora</th>
+                        <th>Saldo</th>
+                        <th>Tramo</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="mainTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// URL Integrada desde tu Apps Script corporativo
+const SCRIPT_URL = "https://script.google.com/a/macros/platam.co/s/AKfycbwyj7k4JxBF1n8CnDqGXWGisfVfTlmVw-DN_jzCNAWPnOHLHLifCCVyDTTEf39Kec9/exec"; 
+
+const fmt = v => '$ ' + Math.round(v).toLocaleString('es-CO');
+
+async function loadData() {
+    try {
+        const response = await fetch(SCRIPT_URL);
+        
+        // Si Google redirige, significa que el navegador necesita login activo de Platam
+        if (response.redirected) {
+            promptLogin();
+            return;
+        }
+
+        const data = await response.json();
+        
+        if (data.error) {
+            document.getElementById('loader').innerHTML = `
+                <div style="text-align:center; color:white;">
+                    <h2 style="color:var(--danger)">Acceso Restringido</h2>
+                    <p>${data.error}</p>
+                    <button onclick="window.open('${SCRIPT_URL}', '_blank'); location.reload();" 
+                    style="margin-top:20px; padding:12px 24px; background:var(--accent); border:none; color:white; border-radius:6px; cursor:pointer;">
+                        Identificarse con @platam.co
+                    </button>
+                </div>`;
+            return;
+        }
+
+        processAndRender(data);
+        document.getElementById('loader').style.display = 'none';
+
+    } catch (e) {
+        console.error(e);
+        promptLogin();
+    }
+}
+
+function promptLogin() {
+    document.getElementById('loader').innerHTML = `
+        <button onclick="window.open('${SCRIPT_URL}', '_blank'); location.reload();" 
+        style="padding:15px 30px; background:#4f8cff; color:white; border:none; border-radius:8px; cursor:pointer; font-family:Syne; font-weight:700;">
+        🔐 INICIAR SESIÓN CORPORATIVA PLATAM
+        </button>
+        <p style="color:var(--muted); font-size:0.7rem; margin-top:10px;">Los datos están protegidos por la cuenta @platam.co</p>`;
+}
+
+function calculateMora(endDateStr, graceDays) {
+    if (!endDateStr) return 0;
+    const hoy = new Date();
+    const vencimiento = new Date(endDateStr);
+    vencimiento.setDate(vencimiento.getDate() + (Number(graceDays) || 0));
+    
+    const diffTime = hoy - vencimiento;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+}
+
+function getTramo(dias) {
+    if (dias <= 0) return 'Al día';
+    if (dias <= 30) return 'Par 1-30';
+    if (dias <= 60) return 'Par 31-60';
+    if (dias <= 90) return 'Par 61-90';
+    return 'Default (>90)';
+}
+
+function processAndRender(rows) {
+    let totals = { car: 0, bnpl: 0, ifin: 0, moraV: 0, m30: 0, defC: 0 };
+    const processed = rows.map(r => {
+        const balance = parseFloat(r.outstanding_balance) || 0;
+        const days = calculateMora(r.loan_end_date, r.normal_late_days);
+        
+        totals.car += balance;
+        if (r.business_line === 'BNPL') totals.bnpl += balance;
+        if (r.business_line === 'Invoice Financing') totals.ifin += balance;
+        if (days > 0) totals.moraV += balance;
+        if (days > 30) totals.m30 += balance;
+        if (r.loan_status && r.loan_status.toLowerCase() === 'default') totals.defC++;
+
+        return { ...r, balance, days, tramo: getTramo(days) };
+    });
+
+    // Actualizar Cifras
+    document.getElementById('total-cartera').textContent = fmt(totals.car);
+    document.getElementById('total-bnpl').textContent = fmt(totals.bnpl);
+    document.getElementById('total-if').textContent = fmt(totals.ifin);
+    document.getElementById('total-mora').textContent = fmt(totals.moraV);
+    document.getElementById('tasa-mora').textContent = ((totals.m30 / totals.car) * 100).toFixed(2) + '%';
+    document.getElementById('count-default').textContent = totals.defC;
+
+    // Render Tabla
+    document.getElementById('mainTableBody').innerHTML = processed.slice(0, 50).map(r => `
+        <tr>
+            <td style="font-weight:600">${r.borrower_name || 'Desconocido'}</td>
+            <td>${r.business_line || '-'}</td>
+            <td>${r.loan_end_date ? new Date(r.loan_end_date).toLocaleDateString() : '-'}</td>
+            <td style="color:${r.days > 0 ? 'var(--danger)' : 'var(--success)'}">${r.days}</td>
+            <td style="font-weight:700">${fmt(r.balance)}</td>
+            <td><span class="badge" style="background:rgba(255,255,255,0.05)">${r.tramo}</span></td>
+            <td><span class="badge ${r.loan_status === 'activo' ? 'bg-success' : 'bg-danger'}">${r.loan_status || 'N/A'}</span></td>
+        </tr>
+    `).join('');
+
+    // Gráfica Barras
+    const topData = [...processed].sort((a,b) => b.balance - a.balance).slice(0, 10);
+    new Chart(document.getElementById('topBar'), {
+        type: 'bar',
+        data: {
+            labels: topData.map(d => (d.borrower_name || '').substring(0, 15)),
+            datasets: [{ data: topData.map(d => d.balance), backgroundColor: '#4f8cff', borderRadius: 5 }]
+        },
+        options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { ticks: { color: '#64748b' } } } }
+    });
+
+    // Ranking Comerciales
+    const cMap = {};
+    processed.forEach(r => { const c = r.Comercial || 'N/A'; cMap[c] = (cMap[c] || 0) + r.balance; });
+    const cSorted = Object.entries(cMap).sort((a,b) => b[1] - a[1]);
+    const maxC = cSorted[0] ? cSorted[0][1] : 1;
+    document.getElementById('comercialRanking').innerHTML = cSorted.map(([n, v]) => `
+        <div class="ranking-item">
+            <div style="width:120px; font-size:0.7rem">${n}</div>
+            <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(v/maxC*100)}%"></div></div>
+            <div style="width:100px; text-align:right; font-weight:700">${fmt(v)}</div>
+        </div>
+    `).join('');
+}
+
+setInterval(() => { document.getElementById('livetime').textContent = 'LIVE · ' + new Date().toLocaleTimeString(); }, 1000);
+loadData();
+</script>
+</body>
+</html>
